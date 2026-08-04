@@ -56,6 +56,9 @@ var (
 )
 
 func handleCommands(cmds []string) []byte{
+	if len(cmds) == 0 {
+		return []byte("-ERR empty command\r\n")
+	}
 	command := cmds[0]
 
 	switch command {
