@@ -116,7 +116,7 @@ func handleCommands(cmds []string) []byte{
 			return []byte("$-1\r\n") 
 		}
 
-		if !data.ExpiresAt.IsZero() && time.Now().After(data.ExpiresAt) {
+		if isExpired(data) {
 			delete(redisMap, cmds[1])
 			return []byte("$-1\r\n")
 		}
@@ -195,6 +195,92 @@ func handleCommands(cmds []string) []byte{
 
 		return []byte(fmt.Sprintf(":%d\r\n", result))
 
+	case "TTL":
+		if len(cmds) != 2 {
+			return []byte("-ERR wrong number of arguments for 'TTL' command\r\n")
+		}
+		targetKey := cmds[1]
+
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		item, exists := redisMap[targetKey]
+
+		if !exists {
+			return []byte(":-2\r\n")
+		}
+
+		// Key exists but has no expiration set
+		if item.ExpiresAt.IsZero() {
+			return []byte(":-1\r\n") 
+		}
+
+		// Key exists but expired
+		if isExpired(item) {
+			delete(redisMap, targetKey)
+			return []byte(":-2\r\n")
+		}
+
+		// Calculate remaining seconds rounded down
+		remainder := int(time.Until(item.ExpiresAt).Seconds())
+		return []byte(fmt.Sprintf(":%d\r\n", remainder))
+		
+	case "MSET":
+		if len(cmds) < 3 || (len(cmds)-1)%2 != 0 {
+			return []byte("-ERR wrong number of arguments for 'MSET' command\r\n")
+		}
+
+		mapMutex.Lock()
+		// Increment by 2 to loop through key/value pairs sequentially
+		for i := 1; i < len(cmds); i += 2 {
+			key := cmds[i]
+			val := cmds[i+1]
+			
+			redisMap[key] = CacheItem{
+				Value: val,
+			}
+		}
+		mapMutex.Unlock()
+
+		return []byte("+OK\r\n")	
+		
+	case "MGET":
+		if len(cmds) < 2 {
+			return []byte("-ERR wrong number of arguments for 'MGET' command\r\n")
+		}
+
+		requestedKeysCount := len(cmds) - 1
+		var responseBuffer bytes.Buffer
+
+		// 1. Write the RESP Array header based on how many keys were requested (e.g., *2\r\n)
+		responseBuffer.WriteString(fmt.Sprintf("*%d\r\n", requestedKeysCount))
+
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		// 2. Loop through every requested key starting at index 1
+		for i := 1; i < len(cmds); i++ {
+			targetKey := cmds[i]
+			item, exists := redisMap[targetKey]
+
+			// Handle expired key
+			if !exists || (isExpired(item)) {
+				responseBuffer.WriteString("$-1\r\n")
+			} else {
+				responseBuffer.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(item.Value), item.Value))
+			}
+
+			if !exists {
+				// Append Null Bulk String to array if key doesn't exist
+				responseBuffer.WriteString("$-1\r\n")
+			} else {
+				// Append valid Bulk String payload
+				responseBuffer.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(item.Value), item.Value))
+			}
+		}
+
+		return responseBuffer.Bytes()
+
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
@@ -223,6 +309,10 @@ func incrementBy(key string, amount int) (int, error) {
 			ExpiresAt: data.ExpiresAt,
 		}
 		return currentNum, nil
+}
+
+func isExpired(item CacheItem) bool {
+    return !item.ExpiresAt.IsZero() && time.Now().After(item.ExpiresAt)
 }
 
 func getArrayLength(reader *bufio.Reader)(int, error) {
