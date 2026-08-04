@@ -68,7 +68,7 @@ func handleCommands(cmds []string) []byte{
 		return []byte("+PONG\r\n")
 	case "SET":
 		if len(cmds) < 3 {
-			return []byte("-ERR wrong number fo commds form 'SET' command\r\n")
+			return []byte("-ERR wrong number of arguments for 'SET' command\r\n")
 		}
 		mapMutex.Lock()
 		redisMap[cmds[1]] = cmds[2]
@@ -76,7 +76,7 @@ func handleCommands(cmds []string) []byte{
 		return []byte("+OK\r\n")
 	case "GET":
 		if len(cmds) < 2 {
-			return []byte("-ERR wrong number fo commds form 'GET' command\r\n")
+			return []byte("-ERR wrong number of arguments for 'GET' command\r\n")
 		}
 
 		mapMutex.RLock()
@@ -88,7 +88,7 @@ func handleCommands(cmds []string) []byte{
 		}
 		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data), data))
 	default:
-		fmt.Println("Unknown command")
+		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
 	return []byte("-ERR Unknown command\r\n")
 }
