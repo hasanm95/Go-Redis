@@ -39,7 +39,11 @@ func handleConnection(conn net.Conn) {
 		}
 		fmt.Printf("%q\n", string(buf[:n]))
 		reader := bufio.NewReader(bytes.NewReader(buf[:n]))
-		cmds := redisParser(reader)
+		cmds, err := redisParser(reader)
+
+		if err != nil {
+			log.Fatalf("err: %v", err)
+		}
 
 		fmt.Println(cmds)
 
@@ -107,28 +111,28 @@ func parseCmd(reader *bufio.Reader) (string, error) {
 	return string(str), nil
 }
 
-func redisParser(reader *bufio.Reader) []string {
+func redisParser(reader *bufio.Reader) ([]string, error) {
 	parsedCmd := []string{}
 
 	length, err := getArrayLength(reader)
 
 	if err != nil {
-		log.Printf("error %v", err)
+		return nil, err
 	}
 
 	for i := 0; i < length; i++ {
-		string, err := parseCmd(reader)
+		token, err := parseCmd(reader)
 
 		if err != nil {
 			fmt.Println("Error:", err)
 		}
 
-		parsedCmd = append(parsedCmd, string)
+		parsedCmd = append(parsedCmd, token)
 	}
 
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
 
-	return parsedCmd
+	return parsedCmd, nil
 }
