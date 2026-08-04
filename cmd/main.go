@@ -170,7 +170,7 @@ func handleCommands(cmds []string) []byte{
 
 	case "DECR": 
 		if len(cmds) != 2 {
-			return []byte("-ERR wrong number of arguments for 'INCR' command\r\n")
+			return []byte("-ERR wrong number of arguments for 'DECR' command\r\n")
 		}
 		key := cmds[1]
 		var currentNum int
@@ -181,7 +181,7 @@ func handleCommands(cmds []string) []byte{
 		data, exists := redisMap[key]
 
 		if !exists {
-			currentNum = 1
+			currentNum = 0
 		} else {
 			var err error
 			currentNum, err = strconv.Atoi(data.Value)
@@ -197,6 +197,71 @@ func handleCommands(cmds []string) []byte{
 	
 		return []byte(fmt.Sprintf(":%d\r\n", currentNum))
 		
+	case "INCRBY": 
+		if len(cmds) != 3 {
+			return []byte("-ERR wrong number of arguments for 'INCRBY' command\r\n")
+		}
+		key := cmds[1]
+		amount, err := strconv.Atoi(cmds[2])
+		if err != nil {
+			return []byte("-ERR amoint is not an integer or out of range\r\n")
+		}
+		var currentNum int
+
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		data, exists := redisMap[key]
+
+		if !exists {
+			currentNum = 0
+		} else {
+			var err error
+			currentNum, err = strconv.Atoi(data.Value)
+			if err != nil {
+				return []byte("-ERR value is not an integer or out of range\r\n")
+			}
+		}
+		currentNum = currentNum + amount
+		redisMap[key] = CacheItem{
+			Value: strconv.Itoa(currentNum),
+			ExpiresAt: data.ExpiresAt,
+		}
+	
+		return []byte(fmt.Sprintf(":%d\r\n", currentNum))
+	case "DECRBY": 
+		if len(cmds) != 3 {
+			return []byte("-ERR wrong number of arguments for 'DECRBY' command\r\n")
+		}
+		key := cmds[1]
+		amount, err := strconv.Atoi(cmds[2])
+		if err != nil {
+			return []byte("-ERR amoint is not an integer or out of range\r\n")
+		}
+		var currentNum int
+
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		data, exists := redisMap[key]
+
+		if !exists {
+			currentNum = 0
+		} else {
+			var err error
+			currentNum, err = strconv.Atoi(data.Value)
+			if err != nil {
+				return []byte("-ERR value is not an integer or out of range\r\n")
+			}
+		}
+		currentNum = currentNum - amount
+		redisMap[key] = CacheItem{
+			Value: strconv.Itoa(currentNum),
+			ExpiresAt: data.ExpiresAt,
+		}
+	
+		return []byte(fmt.Sprintf(":%d\r\n", currentNum))
+
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
