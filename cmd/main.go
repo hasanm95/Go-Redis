@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"strconv"
@@ -52,11 +53,11 @@ func getArrayLength(reader *bufio.Reader)(int, error) {
 	prefix, err := reader.ReadByte()
 
 	if err != nil {
-		return 0, fmt.Errorf("Error reading first byte: %v", err)
+		return 0, fmt.Errorf("[length] Error reading first byte: %v", err)
 	}
 
 	if prefix != '*' {
-		return 0, fmt.Errorf("invalid protocol: expected '*', got %c", prefix)
+		return 0, fmt.Errorf("[length] invalid protocol: expected '*', got %c", prefix)
 	}
 	
 	line, err := reader.ReadBytes('\n')
@@ -87,21 +88,39 @@ func parseCmd(reader *bufio.Reader) (string, error) {
 		return "", fmt.Errorf("[CMD] invalid protocol: expected '$', got %c", prefix)
 	}
 
-	_, err = reader.ReadBytes('\n')
+	lengthLine, err := reader.ReadBytes('\n')
+
+	lengthLine = bytes.TrimSuffix(lengthLine, []byte("\r\n"))
 
 	if err != nil {
-		return "", fmt.Errorf("[CMD] Error reading length line: %v", err)
+		return "", fmt.Errorf("[CMD] error reading length bytes: %v", err)
 	}
 
-	line, err := reader.ReadBytes('\n')
+	length, err := strconv.Atoi(string(lengthLine))
 
 	if err != nil {
-		return "", fmt.Errorf("[CMD] Error cmd lines: %v", err)
+		return "", fmt.Errorf("[CMD] error converting length to number: %v", err)
 	}
 
-	str := bytes.TrimSuffix(line, []byte("\r\n"))
+	if length < 0 {
+		return "", fmt.Errorf("[CMD] invalid length: %d", length)
+	}
 
-	return string(str), nil
+	payload := make([]byte, length)
+
+	_, err = io.ReadFull(reader, payload)
+
+	if err != nil {
+		return "", fmt.Errorf("failed to read full payload: %v", err)
+	}
+
+	_, err = reader.Discard(2)
+
+	if err != nil {
+		return "", fmt.Errorf("failed to discard last 2 bytes: %v", err)
+	}
+
+	return string(payload), nil
 }
 
 func redisParser(reader *bufio.Reader) ([]string, error) {
@@ -117,14 +136,10 @@ func redisParser(reader *bufio.Reader) ([]string, error) {
 		token, err := parseCmd(reader)
 
 		if err != nil {
-			fmt.Println("Error:", err)
+			return nil, err
 		}
 
 		parsedCmd = append(parsedCmd, token)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	return parsedCmd, nil
