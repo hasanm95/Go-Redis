@@ -87,7 +87,7 @@ func handleCommands(cmds []string) []byte{
 	default:
 		fmt.Println("Unknown command")
 	}
-	return nil
+	return []byte("-ERR Unknown command\r\n")
 }
 
 func getArrayLength(reader *bufio.Reader)(int, error) {
