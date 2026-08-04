@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 )
 
 func main(){
@@ -50,8 +51,14 @@ func handleConnection(conn net.Conn) {
 		}
 	}
 }
+
+type CacheItem struct {
+	Value string
+	ExpiresAt time.Time
+}
+
 var (
-	redisMap = make(map[string]string)
+	redisMap = make(map[string]CacheItem)
 	mapMutex sync.RWMutex 
 )
 
@@ -70,8 +77,30 @@ func handleCommands(cmds []string) []byte{
 		if len(cmds) < 3 {
 			return []byte("-ERR wrong number of arguments for 'SET' command\r\n")
 		}
+
+		item := CacheItem{
+			Value: cmds[2],
+		}
+
+		if len(cmds) > 4 {
+			expiryFlag := cmds[3]
+
+			fmt.Println("expiryFlag", expiryFlag)
+
+			if expiryFlag == "EX" {
+				ttlSecs := cmds[4]
+				ttlSecsInt, err := strconv.Atoi(ttlSecs)
+
+				if err != nil {
+					return []byte("-ERR value is not an integer or out of range\r\n")
+				}
+
+				item.ExpiresAt = time.Now().Add(time.Duration(ttlSecsInt) * time.Second)
+			}
+		}
+
 		mapMutex.Lock()
-		redisMap[cmds[1]] = cmds[2]
+		redisMap[cmds[1]] = item
 		mapMutex.Unlock()
 		return []byte("+OK\r\n")
 	case "GET":
@@ -79,14 +108,20 @@ func handleCommands(cmds []string) []byte{
 			return []byte("-ERR wrong number of arguments for 'GET' command\r\n")
 		}
 
-		mapMutex.RLock()
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
 		data, exists := redisMap[cmds[1]]
-		mapMutex.RUnlock()
 		
 		if !exists {
 			return []byte("$-1\r\n") 
 		}
-		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data), data))
+
+		if !data.ExpiresAt.IsZero() && time.Now().After(data.ExpiresAt) {
+			delete(redisMap, cmds[1])
+			return []byte("$-1\r\n")
+		}
+
+		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data.Value), data.Value))
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
