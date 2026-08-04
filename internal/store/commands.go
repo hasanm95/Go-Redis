@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 )
@@ -69,15 +68,24 @@ func HandleCommands(cmds []string) []byte{
 
 		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data.Value), data.Value))
 	case "DEL", "DELETE":
-		_, exists := redisMap[cmds[1]]
-		if exists {
-			mapMutex.Lock()
-			delete(redisMap, cmds[1])
-			mapMutex.Unlock()
-			return []byte(":1\r\n")
-		} else {
-			return []byte(":0\r\n")
+		if len(cmds) < 2 {
+			return []byte("-ERR wrong number of arguments for 'DEL' command\r\n")
 		}
+
+		count := 0
+		mapMutex.Lock()
+
+		for i := 1; i < len(cmds); i++ {
+			targetKey := cmds[i] 
+			
+			if _, exists := redisMap[targetKey]; exists {
+				delete(redisMap, targetKey)
+				count++
+			}
+		}
+		mapMutex.Unlock()
+
+		return []byte(fmt.Sprintf(":%d\r\n", count))
 	case "EXISTS":
 		_, exists := redisMap[cmds[1]]
 		if exists {
@@ -177,7 +185,6 @@ func HandleCommands(cmds []string) []byte{
 		}
 
 		mapMutex.Lock()
-		// Increment by 2 to loop through key/value pairs sequentially
 		for i := 1; i < len(cmds); i += 2 {
 			key := cmds[i]
 			val := cmds[i+1]
@@ -185,48 +192,47 @@ func HandleCommands(cmds []string) []byte{
 			redisMap[key] = CacheItem{
 				Value: val,
 			}
-			log.Printf("[DEBUG] Current Map State: %+v\n", redisMap)
 		}
 		mapMutex.Unlock()
 
-		return []byte("+OK\r\n")	
+		return []byte("+OK\r\n")
 		
 	case "MGET":
 		if len(cmds) < 2 {
 			return []byte("-ERR wrong number of arguments for 'MGET' command\r\n")
 		}
 
-		requestedKeysCount := len(cmds) - 1
 		var responseBuffer bytes.Buffer
+		requestedKeysCount := len(cmds) - 1
 
-		// 1. Write the RESP Array header based on how many keys were requested (e.g., *2\r\n)
+		// 1. Write the clean master array frame header
 		responseBuffer.WriteString(fmt.Sprintf("*%d\r\n", requestedKeysCount))
 
 		mapMutex.Lock()
 		defer mapMutex.Unlock()
 
-		// 2. Loop through every requested key starting at index 1
+		// 2. Loop through every requested key using index variable 'i'
 		for i := 1; i < len(cmds); i++ {
 			targetKey := cmds[i]
 			item, exists := redisMap[targetKey]
 
-			// Handle expired key
-			if !exists || (IsExpired(item)) {
-				responseBuffer.WriteString("$-1\r\n")
-			} else {
-				responseBuffer.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(item.Value), item.Value))
+			// Passive Eviction Check
+			if exists && !item.ExpiresAt.IsZero() && time.Now().After(item.ExpiresAt) {
+				delete(redisMap, targetKey)
+				exists = false
 			}
 
 			if !exists {
-				// Append Null Bulk String to array if key doesn't exist
 				responseBuffer.WriteString("$-1\r\n")
 			} else {
-				// Append valid Bulk String payload
+				// 🌟 FIX: Isolate data explicitly with its exact specific string length
 				responseBuffer.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(item.Value), item.Value))
 			}
 		}
 
+		// 3. Export the clean buffer back to the connection line
 		return responseBuffer.Bytes()
+
 
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
