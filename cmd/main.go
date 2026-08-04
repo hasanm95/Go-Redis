@@ -40,14 +40,28 @@ func handleConnection(conn net.Conn) {
 			return;
 		}
 
-		fmt.Println(cmds)
-
-		_, err = conn.Write([]byte("+OK\r\n"))
+		returnVal := handleCommands(cmds)
+		
+		_, err = conn.Write(returnVal)
 
 		if err != nil {
 			log.Printf("Server write error: %v", err)
 		}
 	}
+}
+
+func handleCommands(cmds []string) []byte{
+	command := cmds[0]
+
+	switch command {
+	case "COMMAND":
+	return []byte("*0\r\n") 
+	case "PING":
+		return []byte("+PONG\r\n")
+	default:
+		fmt.Println("Unknown command")
+	}
+	return nil
 }
 
 func getArrayLength(reader *bufio.Reader)(int, error) {
