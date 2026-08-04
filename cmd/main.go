@@ -37,6 +37,7 @@ func handleConnection(conn net.Conn) {
 
 		if err != nil {
 			log.Fatalf("err: %v", err)
+			return;
 		}
 
 		fmt.Println(cmds)
@@ -90,11 +91,11 @@ func parseCmd(reader *bufio.Reader) (string, error) {
 
 	lengthLine, err := reader.ReadBytes('\n')
 
-	lengthLine = bytes.TrimSuffix(lengthLine, []byte("\r\n"))
-
 	if err != nil {
 		return "", fmt.Errorf("[CMD] error reading length bytes: %v", err)
 	}
+
+	lengthLine = bytes.TrimSuffix(lengthLine, []byte("\r\n"))
 
 	length, err := strconv.Atoi(string(lengthLine))
 
