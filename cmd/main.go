@@ -27,17 +27,18 @@ func main(){
 }
 
 func handleConnection(conn net.Conn) {
+	for {
+		buf := make([]byte, 1024)
+		n, err := conn.Read(buf)	
+		if err != nil {
+			log.Printf("Read error: %v", err)
+			return
+		}
+		fmt.Println(string(buf[:n]))
+		_, err = conn.Write([]byte("+OK\r\n"))
 
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)	
-	if err != nil {
-        log.Printf("Read error: %v", err)
-        return
-    }
-	fmt.Println(string(buf[:n]))
-	_, err = conn.Write([]byte("+OK\r\n"))
-
-	if err != nil {
-        log.Printf("Server write error: %v", err)
-    }
+		if err != nil {
+			log.Printf("Server write error: %v", err)
+		}
+	}
 }
