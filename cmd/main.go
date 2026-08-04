@@ -144,58 +144,25 @@ func handleCommands(cmds []string) []byte{
 			return []byte("-ERR wrong number of arguments for 'INCR' command\r\n")
 		}
 		key := cmds[1]
-		var currentNum int
 
-		mapMutex.Lock()
-		defer mapMutex.Unlock()
-
-		data, exists := redisMap[key]
-
-		if !exists {
-			currentNum = 0
-		} else {
-			var err error
-			currentNum, err = strconv.Atoi(data.Value)
-			if err != nil {
-				return []byte("-ERR value is not an integer or out of range\r\n")
-			}
+		result, err := incrementBy(key, +1)
+		if err != nil {
+			return []byte("-ERR value is not an integer or out of range\r\n")
 		}
-		currentNum++
-		redisMap[key] = CacheItem{
-			Value: strconv.Itoa(currentNum),
-			ExpiresAt: data.ExpiresAt,
-		}
-	
-		return []byte(fmt.Sprintf(":%d\r\n", currentNum))
+
+		return []byte(fmt.Sprintf(":%d\r\n", result))
 
 	case "DECR": 
 		if len(cmds) != 2 {
 			return []byte("-ERR wrong number of arguments for 'DECR' command\r\n")
 		}
 		key := cmds[1]
-		var currentNum int
-
-		mapMutex.Lock()
-		defer mapMutex.Unlock()
-
-		data, exists := redisMap[key]
-
-		if !exists {
-			currentNum = 0
-		} else {
-			var err error
-			currentNum, err = strconv.Atoi(data.Value)
-			if err != nil {
-				return []byte("-ERR value is not an integer or out of range\r\n")
-			}
+		result, err := incrementBy(key, -1)
+		if err != nil {
+			return []byte("-ERR value is not an integer or out of range\r\n")
 		}
-		currentNum--
-		redisMap[key] = CacheItem{
-			Value: strconv.Itoa(currentNum),
-			ExpiresAt: data.ExpiresAt,
-		}
-	
-		return []byte(fmt.Sprintf(":%d\r\n", currentNum))
+
+		return []byte(fmt.Sprintf(":%d\r\n", result))
 		
 	case "INCRBY": 
 		if len(cmds) != 3 {
@@ -206,29 +173,12 @@ func handleCommands(cmds []string) []byte{
 		if err != nil {
 			return []byte("-ERR amoint is not an integer or out of range\r\n")
 		}
-		var currentNum int
-
-		mapMutex.Lock()
-		defer mapMutex.Unlock()
-
-		data, exists := redisMap[key]
-
-		if !exists {
-			currentNum = 0
-		} else {
-			var err error
-			currentNum, err = strconv.Atoi(data.Value)
-			if err != nil {
-				return []byte("-ERR value is not an integer or out of range\r\n")
-			}
+		result, err := incrementBy(key, +amount)
+		if err != nil {
+			return []byte("-ERR value is not an integer or out of range\r\n")
 		}
-		currentNum = currentNum + amount
-		redisMap[key] = CacheItem{
-			Value: strconv.Itoa(currentNum),
-			ExpiresAt: data.ExpiresAt,
-		}
-	
-		return []byte(fmt.Sprintf(":%d\r\n", currentNum))
+
+		return []byte(fmt.Sprintf(":%d\r\n", result))
 	case "DECRBY": 
 		if len(cmds) != 3 {
 			return []byte("-ERR wrong number of arguments for 'DECRBY' command\r\n")
@@ -238,6 +188,19 @@ func handleCommands(cmds []string) []byte{
 		if err != nil {
 			return []byte("-ERR amoint is not an integer or out of range\r\n")
 		}
+		result, err := incrementBy(key, -amount)
+		if err != nil {
+			return []byte("-ERR value is not an integer or out of range\r\n")
+		}
+
+		return []byte(fmt.Sprintf(":%d\r\n", result))
+
+	default:
+		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
+	}
+}
+
+func incrementBy(key string, amount int) (int, error) {
 		var currentNum int
 
 		mapMutex.Lock()
@@ -251,20 +214,15 @@ func handleCommands(cmds []string) []byte{
 			var err error
 			currentNum, err = strconv.Atoi(data.Value)
 			if err != nil {
-				return []byte("-ERR value is not an integer or out of range\r\n")
+				return 0, err
 			}
 		}
-		currentNum = currentNum - amount
+		currentNum = currentNum + amount
 		redisMap[key] = CacheItem{
 			Value: strconv.Itoa(currentNum),
 			ExpiresAt: data.ExpiresAt,
 		}
-	
-		return []byte(fmt.Sprintf(":%d\r\n", currentNum))
-
-	default:
-		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
-	}
+		return currentNum, nil
 }
 
 func getArrayLength(reader *bufio.Reader)(int, error) {
