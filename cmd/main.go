@@ -64,11 +64,18 @@ func handleCommands(cmds []string) []byte{
 	case "PING":
 		return []byte("+PONG\r\n")
 	case "SET":
+		if len(cmds) < 3 {
+			return []byte("wrong number fo commds form 'SET' command")
+		}
 		mapMutex.Lock()
 		redisMap[cmds[1]] = cmds[2]
 		mapMutex.Unlock()
 		return []byte("+OK\r\n")
 	case "GET":
+		if len(cmds) < 2 {
+			return []byte("wrong number fo commds form 'GET' command")
+		}
+
 		mapMutex.RLock()
 		data, exists := redisMap[cmds[1]]
 		mapMutex.RUnlock()
