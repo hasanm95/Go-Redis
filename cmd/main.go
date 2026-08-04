@@ -37,7 +37,7 @@ func handleConnection(conn net.Conn) {
 		cmds, err := redisParser(reader)
 
 		if err != nil {
-			log.Fatalf("err: %v", err)
+			log.Printf("err: %v", err)
 			return;
 		}
 
