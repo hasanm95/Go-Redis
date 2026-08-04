@@ -125,11 +125,21 @@ func handleCommands(cmds []string) []byte{
 	case "DELETE":
 		_, exists := redisMap[cmds[1]]
 		if exists {
+			mapMutex.Lock()
 			delete(redisMap, cmds[1])
+			mapMutex.Unlock()
 			return []byte(":1\r\n")
 		} else {
 			return []byte(":0\r\n")
 		}
+	case "EXISTS":
+		_, exists := redisMap[cmds[1]]
+		if exists {
+			return []byte(":1\r\n")
+		} else {
+			return []byte(":0\r\n")
+		}
+	case "INCR": 
 		
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
