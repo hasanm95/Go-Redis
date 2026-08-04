@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 )
 
 func main(){
@@ -49,6 +50,10 @@ func handleConnection(conn net.Conn) {
 		}
 	}
 }
+var (
+	redisMap = make(map[string]string)
+	mapMutex sync.RWMutex 
+)
 
 func handleCommands(cmds []string) []byte{
 	command := cmds[0]
@@ -58,6 +63,20 @@ func handleCommands(cmds []string) []byte{
 	return []byte("*0\r\n") 
 	case "PING":
 		return []byte("+PONG\r\n")
+	case "SET":
+		mapMutex.Lock()
+		redisMap[cmds[1]] = cmds[2]
+		mapMutex.Unlock()
+		return []byte("+OK\r\n")
+	case "GET":
+		mapMutex.RLock()
+		data, exists := redisMap[cmds[1]]
+		mapMutex.RUnlock()
+		
+		if !exists {
+			return []byte("$-1\r\n") 
+		}
+		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data), data))
 	default:
 		fmt.Println("Unknown command")
 	}
