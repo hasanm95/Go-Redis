@@ -122,6 +122,15 @@ func handleCommands(cmds []string) []byte{
 		}
 
 		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data.Value), data.Value))
+	case "DELETE":
+		_, exists := redisMap[cmds[1]]
+		if exists {
+			delete(redisMap, cmds[1])
+			return []byte(":1\r\n")
+		} else {
+			return []byte(":0\r\n")
+		}
+		
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
