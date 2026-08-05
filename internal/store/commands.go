@@ -217,7 +217,7 @@ func HandleCommands(cmds []string) []byte{
 			item, exists := redisMap[targetKey]
 
 			// Passive Eviction Check
-			if exists && !item.ExpiresAt.IsZero() && time.Now().After(item.ExpiresAt) {
+			if exists && IsExpired(item)  {
 				delete(redisMap, targetKey)
 				exists = false
 			}
