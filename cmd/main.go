@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 
 	"github.com/hasanm95/go-redis/internal/server"
+	"github.com/hasanm95/go-redis/internal/store"
 )
 
 func main(){
@@ -15,8 +18,20 @@ func main(){
 	}
 	defer listener.Close()
 
-	fmt.Println("Redis server starting at 6380")
+	store.LoadFromDisk()
 
-	server.ListerLoop(listener)
+	done := make(chan bool)
+	saved := make(chan bool)
+	go store.StartPeriodicSave(done, saved)
+
+	fmt.Println("Redis server starting at 6380")
+	go server.ListerLoop(listener)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+
+	<-sigChan 
+	done <- true
+	<- saved
 }
 
