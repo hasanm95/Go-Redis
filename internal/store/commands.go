@@ -225,7 +225,7 @@ func HandleCommands(cmds []string) []byte{
 			if !exists {
 				responseBuffer.WriteString("$-1\r\n")
 			} else {
-				// 🌟 FIX: Isolate data explicitly with its exact specific string length
+				// Isolate data explicitly with its exact specific string length
 				responseBuffer.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(item.Value), item.Value))
 			}
 		}
