@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -20,6 +21,13 @@ var (
 	redisMap = make(map[string]CacheItem)
 	mapMutex sync.RWMutex 
 )
+
+
+var (
+	replicas []net.Conn
+	replicaMutex sync.RWMutex 
+)
+
 
 
 func IncrementBy(key string, amount int) (int, error) {
@@ -147,4 +155,31 @@ func removeExpiredKeys(){
 			delete(redisMap, key)
 		}
 	}
+}
+
+func AddReplica(conn net.Conn){
+	replicaMutex.Lock()
+	defer replicaMutex.Unlock()
+
+	replicas = append(replicas, conn)
+}
+
+func GetReplicas() []net.Conn{
+	replicaMutex.RLock()
+	defer replicaMutex.RUnlock()
+
+	return replicas
+}
+
+func RemoveReplica(conn net.Conn) {
+    replicaMutex.Lock()
+    defer replicaMutex.Unlock()
+
+    newReplicas := []net.Conn{}
+    for _, r := range replicas {
+        if r != conn {
+            newReplicas = append(newReplicas, r)
+        }
+    }
+    replicas = newReplicas
 }

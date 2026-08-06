@@ -7,32 +7,50 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/hasanm95/go-redis/internal/config"
 	"github.com/hasanm95/go-redis/internal/server"
 	"github.com/hasanm95/go-redis/internal/store"
 )
 
+
 func main(){
-	listener, err := net.Listen("tcp", ":6380")
-	if err != nil {
-		log.Fatal("error listening: ", err)
-	}
-	defer listener.Close()
+    cfg := config.SetupFlags()
 
-	store.LoadFromDisk()
+    listener, err := net.Listen("tcp", ":"+cfg.Port)
+    if err != nil {
+        log.Fatal("error listening: ", err)
+    }
+    defer listener.Close()
 
-  	done := make(chan bool)
+    done := make(chan bool)
     saved := make(chan bool)
-	go store.StartPeriodicSave(done, saved)
-	go store.StartActiveExpiry(done)
 
-	fmt.Println("Redis server starting at 6380")
-	go server.ListerLoop(listener)
+    if cfg.Mode == "master" {
+        fmt.Printf("Starting as Master on port %s\n", cfg.Port)
+        store.LoadFromDisk()
+        go store.StartPeriodicSave(done, saved)
+        go store.StartActiveExpiry(done)
+    } else if cfg.Mode == "replica" {
+        fmt.Printf("Starting as Replica on port %s\n", cfg.Port)
+        go server.StartReplica(cfg.MasterAddr)
+        go store.StartActiveExpiry(done)
+    } else {
+        log.Fatal("invalid mode")
+    }
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt)
+    fmt.Printf("Redis server starting at %s\n", cfg.Port)
+    go server.ListerLoop(listener)
 
-	<-sigChan 
-	close(done)
-	<- saved
+    sigChan := make(chan os.Signal, 1)
+    signal.Notify(sigChan, os.Interrupt)
+
+    <-sigChan
+
+    if cfg.Mode == "master" {
+        close(done)
+        <-saved
+    } else {
+        close(done)
+    }
 }
 

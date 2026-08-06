@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 )
 
 func getArrayLength(reader *bufio.Reader)(int, error) {
@@ -102,4 +103,20 @@ func RedisParser(reader *bufio.Reader) ([]string, error) {
 	}
 
 	return parsedCmd, nil
+}
+
+func EncodeCommand(cmds []string) []byte {
+	if len(cmds) == 0 {
+		return nil
+	}
+
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("*%d\r\n", len(cmds)))
+
+	for _, arg := range cmds {
+		sb.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(arg), arg))
+	}
+
+	return []byte(sb.String())
 }

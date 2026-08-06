@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/hasanm95/go-redis/internal/parser"
 )
 
 func HandleCommands(cmds []string) []byte{
@@ -47,6 +49,13 @@ func HandleCommands(cmds []string) []byte{
 		mapMutex.Lock()
 		redisMap[cmds[1]] = item
 		mapMutex.Unlock()
+
+		replicas := GetReplicas()
+		encoded := parser.EncodeCommand(cmds)
+		for _, replica := range replicas {
+			replica.Write(encoded)
+		}
+
 		return []byte("+OK\r\n")
 	case "GET":
 		if len(cmds) < 2 {
