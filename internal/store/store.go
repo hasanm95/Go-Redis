@@ -28,7 +28,7 @@ var (
 	replicaMutex sync.RWMutex 
 )
 
-
+var isReplica bool
 
 func IncrementBy(key string, amount int) (int, error) {
 		var currentNum int
@@ -182,4 +182,8 @@ func RemoveReplica(conn net.Conn) {
         }
     }
     replicas = newReplicas
+}
+
+func SetReplicaMode(val bool) {
+    isReplica = val
 }

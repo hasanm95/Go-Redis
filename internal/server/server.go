@@ -86,6 +86,6 @@ func StartReplica(masterAddr string) {
 			return;
 		}
 
-		store.HandleCommands(cmds)
+		store.ReplicaExecute(cmds)
 	}
 }

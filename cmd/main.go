@@ -32,6 +32,7 @@ func main(){
         go store.StartActiveExpiry(done)
     } else if cfg.Mode == "replica" {
         fmt.Printf("Starting as Replica on port %s\n", cfg.Port)
+		store.SetReplicaMode(true)
         go server.StartReplica(cfg.MasterAddr)
         go store.StartActiveExpiry(done)
     } else {

@@ -15,6 +15,15 @@ func HandleCommands(cmds []string) []byte{
 	}
 	command := cmds[0]
 
+	writeCommands := map[string]bool{
+		"SET": true, "DEL": true, "MSET": true,
+		"INCR": true, "DECR": true, "INCRBY": true, "DECRBY": true,
+	}
+
+	if isReplica && writeCommands[command] {
+		return []byte("-ERR this server is read-only\r\n")
+	}
+
 	switch command {
 	case "COMMAND":
 	return []byte("*0\r\n") 
@@ -94,6 +103,12 @@ func HandleCommands(cmds []string) []byte{
 		}
 		mapMutex.Unlock()
 
+		replicas := GetReplicas()
+		encoded := parser.EncodeCommand(cmds)
+		for _, replica := range replicas {
+			replica.Write(encoded)
+		}
+
 		return []byte(fmt.Sprintf(":%d\r\n", count))
 	case "EXISTS":
 		_, exists := redisMap[cmds[1]]
@@ -113,6 +128,12 @@ func HandleCommands(cmds []string) []byte{
 			return []byte("-ERR value is not an integer or out of range\r\n")
 		}
 
+		replicas := GetReplicas()
+		encoded := parser.EncodeCommand(cmds)
+		for _, replica := range replicas {
+			replica.Write(encoded)
+		}
+
 		return []byte(fmt.Sprintf(":%d\r\n", result))
 
 	case "DECR": 
@@ -123,6 +144,12 @@ func HandleCommands(cmds []string) []byte{
 		result, err := IncrementBy(key, -1)
 		if err != nil {
 			return []byte("-ERR value is not an integer or out of range\r\n")
+		}
+
+		replicas := GetReplicas()
+		encoded := parser.EncodeCommand(cmds)
+		for _, replica := range replicas {
+			replica.Write(encoded)
 		}
 
 		return []byte(fmt.Sprintf(":%d\r\n", result))
@@ -141,6 +168,12 @@ func HandleCommands(cmds []string) []byte{
 			return []byte("-ERR value is not an integer or out of range\r\n")
 		}
 
+		replicas := GetReplicas()
+		encoded := parser.EncodeCommand(cmds)
+		for _, replica := range replicas {
+			replica.Write(encoded)
+		}
+
 		return []byte(fmt.Sprintf(":%d\r\n", result))
 	case "DECRBY": 
 		if len(cmds) != 3 {
@@ -154,6 +187,12 @@ func HandleCommands(cmds []string) []byte{
 		result, err := IncrementBy(key, -amount)
 		if err != nil {
 			return []byte("-ERR value is not an integer or out of range\r\n")
+		}
+
+		replicas := GetReplicas()
+		encoded := parser.EncodeCommand(cmds)
+		for _, replica := range replicas {
+			replica.Write(encoded)
 		}
 
 		return []byte(fmt.Sprintf(":%d\r\n", result))
@@ -204,6 +243,12 @@ func HandleCommands(cmds []string) []byte{
 		}
 		mapMutex.Unlock()
 
+		replicas := GetReplicas()
+		encoded := parser.EncodeCommand(cmds)
+		for _, replica := range replicas {
+			replica.Write(encoded)
+		}
+
 		return []byte("+OK\r\n")
 		
 	case "MGET":
@@ -245,5 +290,65 @@ func HandleCommands(cmds []string) []byte{
 
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
+	}
+}
+
+func ReplicaExecute(cmds []string) {
+	if len(cmds) == 0 {
+		return
+	}
+
+	command := cmds[0]
+
+	switch command {
+	case "SET":
+		if len(cmds) < 3 {
+			return
+		}
+		item := CacheItem{Value: cmds[2]}
+		if len(cmds) > 4 && cmds[3] == "EX" {
+			ttl, err := strconv.Atoi(cmds[4])
+			if err == nil {
+				item.ExpiresAt = time.Now().Add(time.Duration(ttl) * time.Second)
+			}
+		}
+		mapMutex.Lock()
+		redisMap[cmds[1]] = item
+		mapMutex.Unlock()
+
+	case "DEL":
+		if len(cmds) < 2 {
+			return
+		}
+		mapMutex.Lock()
+		delete(redisMap, cmds[1])
+		mapMutex.Unlock()
+
+	case "MSET":
+		if len(cmds) < 3 {
+			return
+		}
+		mapMutex.Lock()
+		for i := 1; i < len(cmds); i += 2 {
+			redisMap[cmds[i]] = CacheItem{Value: cmds[i+1]}
+		}
+		mapMutex.Unlock()
+
+	case "INCR", "DECR", "INCRBY", "DECRBY":
+		amount := 1
+		if command == "DECR" {
+			amount = -1
+		}
+		if (command == "INCRBY" || command == "DECRBY") && len(cmds) == 3 {
+			n, err := strconv.Atoi(cmds[2])
+			if err == nil {
+				if command == "DECRBY" {
+					amount = -n
+				} else {
+					amount = n
+				}
+			}
+		}
+		IncrementBy(cmds[1], amount)
 	}
 }
