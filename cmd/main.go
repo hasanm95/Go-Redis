@@ -20,9 +20,10 @@ func main(){
 
 	store.LoadFromDisk()
 
-	done := make(chan bool)
-	saved := make(chan bool)
+  	done := make(chan bool)
+    saved := make(chan bool)
 	go store.StartPeriodicSave(done, saved)
+	go store.StartActiveExpiry(done)
 
 	fmt.Println("Redis server starting at 6380")
 	go server.ListerLoop(listener)
@@ -31,7 +32,7 @@ func main(){
 	signal.Notify(sigChan, os.Interrupt)
 
 	<-sigChan 
-	done <- true
+	close(done)
 	<- saved
 }
 

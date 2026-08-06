@@ -122,3 +122,29 @@ func StartPeriodicSave(done <- chan bool, saved chan <- bool){
 		}
 	}
 }
+
+func StartActiveExpiry(done <-chan bool) {
+	ticker := time.NewTicker(90 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			fmt.Println("Start Active Expiry Ticker stopped.")
+			return
+		case <- ticker.C:
+			removeExpiredKeys()
+		}
+	}
+}
+
+func removeExpiredKeys(){
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
+	for key, val := range redisMap {
+		if IsExpired(val) {
+			delete(redisMap, key)
+		}
+	}
+}
