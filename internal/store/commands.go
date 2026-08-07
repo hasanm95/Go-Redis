@@ -313,6 +313,27 @@ func HandleCommands(cmds []string) []byte{
 
 		return []byte(":1\r\n")
 
+	case "PERSIST":
+		if len(cmds) < 2 {
+			return []byte("-ERR wrong number of arguments for 'PERSIST' command\r\n")
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		key := cmds[1]
+
+		item, exists := redisMap[key]
+
+		if !exists {
+			return []byte(":0\r\n")
+		}
+
+		redisMap[key] = CacheItem{
+			Value: item.Value,
+			ExpiresAt: time.Time{},
+		}
+
+		return []byte(":1\r\n")
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
