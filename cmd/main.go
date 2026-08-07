@@ -25,17 +25,18 @@ func main(){
     done := make(chan bool)
     saved := make(chan bool)
 
-    if cfg.Mode == "master" {
+    switch cfg.Mode{
+    case "master": 
         fmt.Printf("Starting as Master on port %s\n", cfg.Port)
         store.LoadFromDisk()
         go store.StartPeriodicSave(done, saved)
         go store.StartActiveExpiry(done)
-    } else if cfg.Mode == "replica" {
+    case "replica":
         fmt.Printf("Starting as Replica on port %s\n", cfg.Port)
 		store.SetReplicaMode(true)
         go server.StartReplica(cfg.MasterAddr)
         go store.StartActiveExpiry(done)
-    } else {
+    default:
         log.Fatal("invalid mode")
     }
 

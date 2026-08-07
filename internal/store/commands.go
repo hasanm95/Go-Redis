@@ -287,7 +287,6 @@ func HandleCommands(cmds []string) []byte{
 		// 3. Export the clean buffer back to the connection line
 		return responseBuffer.Bytes()
 
-
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
