@@ -287,6 +287,32 @@ func HandleCommands(cmds []string) []byte{
 		// 3. Export the clean buffer back to the connection line
 		return responseBuffer.Bytes()
 
+	case "EXPIRE":
+		if len(cmds) < 3 {
+			return []byte("-ERR wrong number of arguments for 'EXPIRE' command\r\n")
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+		key := cmds[1]
+		exTime, err := strconv.Atoi(cmds[2])
+
+		if err != nil {
+			return []byte("-ERR value is not an integer or out of range\r\n")
+		}
+
+		item, exists := redisMap[key]
+
+		if !exists {
+			return []byte(":0\r\n")
+		}
+
+		redisMap[key] = CacheItem{
+			Value: item.Value,
+			ExpiresAt: time.Now().Add(time.Duration(exTime) * time.Second),
+		}
+
+		return []byte(":1\r\n")
+
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
