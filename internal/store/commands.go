@@ -334,6 +334,27 @@ func HandleCommands(cmds []string) []byte{
 		}
 
 		return []byte(":1\r\n")
+
+	case "RENAME":
+		if len(cmds) < 3 {
+			return []byte("-ERR wrong number of arguments for 'RENAME' command\r\n")
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		oldKey := cmds[1]
+		newKey := cmds[2]
+
+		item, exists := redisMap[oldKey]
+
+		if !exists {
+			return []byte(":0\r\n")
+		}
+
+		redisMap[newKey] = item
+		delete(redisMap, oldKey)
+
+		return []byte(":1\r\n")
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
