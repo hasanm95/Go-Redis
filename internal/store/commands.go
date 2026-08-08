@@ -348,13 +348,13 @@ func HandleCommands(cmds []string) []byte{
 		item, exists := redisMap[oldKey]
 
 		if !exists {
-			return []byte(":0\r\n")
+			return []byte("-ERR no such key\r\n")
 		}
 
 		redisMap[newKey] = item
 		delete(redisMap, oldKey)
 
-		return []byte(":1\r\n")
+		return []byte("+OK\r\n")
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
@@ -417,5 +417,51 @@ func ReplicaExecute(cmds []string) {
 			}
 		}
 		IncrementBy(cmds[1], amount)
+
+	case "EXPIRE":
+		if len(cmds) < 3 {
+			return
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+		key := cmds[1]
+		exTime, err := strconv.Atoi(cmds[2])
+
+		if err != nil {
+			return
+		}
+
+		item, exists := redisMap[key]
+
+		if !exists {
+			return
+		}
+
+		redisMap[key] = CacheItem{
+			Value: item.Value,
+			ExpiresAt: time.Now().Add(time.Duration(exTime) * time.Second),
+		}
+
+	case "PERSIST":
+		if len(cmds) < 2 {
+			return
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		key := cmds[1]
+
+		item, exists := redisMap[key]
+
+		if !exists {
+			return
+		}
+
+		redisMap[key] = CacheItem{
+			Value: item.Value,
+			ExpiresAt: time.Time{},
+		}
+
+		return
 	}
 }
