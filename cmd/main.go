@@ -29,6 +29,15 @@ func main(){
     case "master": 
         fmt.Printf("Starting as Master on port %s\n", cfg.Port)
         store.LoadFromDisk()
+
+        if err := store.LoadAOF("aof.log"); err != nil {
+            log.Fatal("failed to load AOF: ", err)
+        }
+
+        if err := store.InitAOF("aof.log"); err != nil {
+            log.Fatal("failed to init AOF: ", err)
+        }
+
         go store.StartPeriodicSave(done, saved)
         go store.StartActiveExpiry(done)
     case "replica":
@@ -49,6 +58,7 @@ func main(){
     <-sigChan
 
     if cfg.Mode == "master" {
+        store.CloseAOF()
         close(done)
         <-saved
     } else {

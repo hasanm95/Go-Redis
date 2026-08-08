@@ -85,6 +85,7 @@ func HandleCommands(cmds []string, conn net.Conn) []byte {
 	// A failed write starts with '-' (RESP error) — don't propagate those.
 	if writeCommands[command] && len(returnVal) > 0 && returnVal[0] != '-' {
 		propagate(cmds)
+		appendToAOF(cmds)
 	}
 
 	return returnVal

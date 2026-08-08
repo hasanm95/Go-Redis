@@ -1,53 +1,22 @@
 {
-    "a3": {
-        "Value": "v3",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
-    },
-    "age": {
-        "Value": "30",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
-    },
-    "certs": {
+    "aoflist": {
         "Value": "",
         "ListValue": [
-            "msc",
-            "bsc",
-            "hsc",
-            "ssc",
-            "jsc"
+            "three",
+            "two",
+            "one"
         ],
         "ExpiresAt": "0001-01-01T00:00:00Z",
         "Type": "list"
     },
-    "city": {
-        "Value": "feni",
+    "aoftest": {
+        "Value": "survived",
         "ListValue": null,
         "ExpiresAt": "0001-01-01T00:00:00Z",
         "Type": ""
-    },
-    "citylist": {
-        "Value": "",
-        "ListValue": [
-            "dhaka",
-            "chattogram",
-            "feni",
-            "sylhet"
-        ],
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": "list"
     },
     "counter": {
-        "Value": "12",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
-    },
-    "country": {
-        "Value": "bangladesh",
+        "Value": "15",
         "ListValue": null,
         "ExpiresAt": "0001-01-01T00:00:00Z",
         "Type": ""
@@ -58,8 +27,14 @@
         "ExpiresAt": "0001-01-01T00:00:00Z",
         "Type": ""
     },
-    "k3": {
-        "Value": "v3",
+    "k1": {
+        "Value": "v1",
+        "ListValue": null,
+        "ExpiresAt": "0001-01-01T00:00:00Z",
+        "Type": ""
+    },
+    "k2": {
+        "Value": "v2",
         "ListValue": null,
         "ExpiresAt": "0001-01-01T00:00:00Z",
         "Type": ""
@@ -74,11 +49,5 @@
         ],
         "ExpiresAt": "0001-01-01T00:00:00Z",
         "Type": "list"
-    },
-    "user": {
-        "Value": "hasan",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
     }
 }
