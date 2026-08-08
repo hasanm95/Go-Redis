@@ -370,6 +370,106 @@ func HandleCommands(cmds []string) []byte{
 
 		return []byte(fmt.Sprintf("+%d\r\n", len(result)))
 
+	case "RPUSH":
+		if len(cmds) < 3 {
+			return []byte("-ERR wrong number of arguments for 'RPUSH' command\r\n")
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		key := cmds[1];
+		values := cmds[2:]
+		result := make([]string, 0)
+
+		if item, exists := redisMap[key]; !exists {
+			redisMap[key] = CacheItem{
+				ListValue: result, 
+				Type:      "list",
+			}
+		} else {
+			result = append(result, item.ListValue...)
+		}
+
+		result = append(result, values...)
+
+		redisMap[key] = CacheItem{
+			ListValue: result,
+			Type: "list",
+		}
+
+		return []byte(fmt.Sprintf("+%d\r\n", len(result)))
+
+	case "LPOP":
+		if len(cmds) < 2 {
+			return []byte("-ERR wrong number of arguments for 'LPOP' command\r\n")
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		key := cmds[1]
+		result := make([]string, 0)
+
+		if item, exists := redisMap[key]; !exists {
+			return []byte("$-1\r\n")
+		} else {
+			result = append(result, item.ListValue...)
+		}
+
+		if len(result) < 1 {
+			return []byte("$-1\r\n")
+		}
+
+		poppedValue := result[0];
+		result = result[1:]
+		length := len(result)
+
+
+		if length < 1 {
+			delete(redisMap, key)
+		} else {
+			redisMap[key] = CacheItem{
+				ListValue: result,
+				Type: "list",
+			}
+		}
+
+		return []byte(fmt.Sprintf("+%s\r\n", poppedValue))
+
+	case "RPOP":
+		if len(cmds) < 2 {
+			return []byte("-ERR wrong number of arguments for 'RPOP' command\r\n")
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		key := cmds[1]
+		result := make([]string, 0)
+
+		if item, exists := redisMap[key]; !exists {
+			return []byte("$-1\r\n")
+		} else {
+			result = append(result, item.ListValue...)
+		}
+
+		if len(result) < 1 {
+			return []byte("$-1\r\n")
+		}
+
+		lastIndex := len(result) - 1
+		poppedValue := result[lastIndex];
+		result = result[:lastIndex]
+
+		if len(result) < 1 {
+			delete(redisMap, key)
+		} else {
+			redisMap[key] = CacheItem{
+				ListValue: result,
+				Type: "list",
+			}
+		}
+
+		return []byte(fmt.Sprintf("+%s\r\n", poppedValue))	
+
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}

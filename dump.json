@@ -8,7 +8,6 @@
     "certs": {
         "Value": "",
         "ListValue": [
-            "jsc",
             "ssc",
             "hsc",
             "bsc",
@@ -29,11 +28,10 @@
             "dhaka",
             "chattogram",
             "feni",
-            "sylhet",
-            "khulna"
+            "sylhet"
         ],
         "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
+        "Type": "list"
     },
     "country": {
         "Value": "bangladesh",
