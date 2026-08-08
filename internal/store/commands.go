@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/hasanm95/go-redis/internal/parser"
 )
@@ -13,7 +14,7 @@ var writeCommands = map[string]bool{
 	"LPUSH": true, "RPUSH": true, "LPOP": true, "RPOP": true,
 }
 
-func HandleCommands(cmds []string) []byte {
+func HandleCommands(cmds []string, conn net.Conn) []byte {
 	if len(cmds) == 0 {
 		return []byte("-ERR empty command\r\n")
 	}
@@ -70,6 +71,10 @@ func HandleCommands(cmds []string) []byte {
 		returnVal = handleRPop(cmds)
 	case "LRANGE":
 		returnVal = handleLRange(cmds)
+	case "SUBSCRIBE":
+		returnVal = handleSubscription(cmds, conn)
+	case "PUBLISH":
+		returnVal = handlePublish(cmds)
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}

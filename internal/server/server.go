@@ -46,11 +46,12 @@ func handleConnection(conn net.Conn) {
 		cmds, err := parser.RedisParser(reader)
 
 		if err != nil {
+			store.RemoveSubscriber(conn)
 			log.Printf("err: %v", err)
 			return;
 		}
 
-		returnVal := store.HandleCommands(cmds)
+		returnVal := store.HandleCommands(cmds, conn)
 		
 		_, err = conn.Write(returnVal)
 
