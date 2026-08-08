@@ -470,6 +470,67 @@ func HandleCommands(cmds []string) []byte{
 
 		return []byte(fmt.Sprintf("+%s\r\n", poppedValue))	
 
+	case "LRANGE":
+		if len(cmds) < 4 {
+			return []byte("-ERR wrong number of arguments for 'LRANGE' command\r\n")
+		}
+		mapMutex.RLock()
+		defer mapMutex.RUnlock()
+
+		key := cmds[1]
+		result := make([]string, 0)
+		var responseBuffer bytes.Buffer
+
+		if item, exists := redisMap[key]; !exists {
+			return []byte("*0\r\n")
+		} else {
+			result = append(result, item.ListValue...)
+		}
+
+		startIdxStr := cmds[2]
+		endIdxStr := cmds[3]
+
+		startIdx, err := strconv.Atoi(startIdxStr)
+
+		if err != nil {
+			return []byte("-ERR failed to convert start index to int")
+		}
+
+		endIdx, err := strconv.Atoi(endIdxStr)
+
+		if err != nil {
+			return []byte("-ERR failed to convert end index to int")
+		}
+		
+		n := len(result)
+
+		if startIdx < 0 {
+			startIdx = n + startIdx
+		}
+		if endIdx < 0 {
+			endIdx = n + endIdx
+		}
+		if startIdx < 0 {
+			startIdx = 0
+		}
+		if endIdx >= n {
+			endIdx = n - 1
+		}
+
+		if startIdx > endIdx || startIdx >= n {
+			return []byte("$-1\r\n")
+		}
+	
+		result = result[startIdx:endIdx+1]
+
+		responseBuffer.WriteString(fmt.Sprintf("*%d\r\n", len(result)))
+
+		for _, val := range result {
+			responseBuffer.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(val), val))
+		}
+
+		return responseBuffer.Bytes()
+
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
