@@ -60,12 +60,6 @@ func HandleCommands(cmds []string) []byte{
 		redisMap[cmds[1]] = item
 		mapMutex.Unlock()
 
-		replicas := GetReplicas()
-		encoded := parser.EncodeCommand(cmds)
-		for _, replica := range replicas {
-			replica.Write(encoded)
-		}
-
 		return []byte("+OK\r\n")
 	case "GET":
 		if len(cmds) < 2 {
@@ -85,7 +79,21 @@ func HandleCommands(cmds []string) []byte{
 			return []byte("$-1\r\n")
 		}
 
-		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data.Value), data.Value))
+		if data.Type == "" || data.Type == "string" {
+			return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(data.Value), data.Value))
+		} else {
+			var responseBuffer bytes.Buffer
+			result := data.ListValue
+			responseBuffer.WriteString(fmt.Sprintf("*%d\r\n", len(result)))
+
+			for _, val := range result {
+				responseBuffer.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(val), val))
+			}
+
+			return responseBuffer.Bytes()
+		}
+
+		
 	case "DEL", "DELETE":
 		if len(cmds) < 2 {
 			return []byte("-ERR wrong number of arguments for 'DEL' command\r\n")
@@ -337,7 +345,18 @@ func HandleCommands(cmds []string) []byte{
 		key := cmds[1]
 
 		if item, exists := redisMap[key]; exists {
-			return []byte(fmt.Sprintf("+%T\r\n", item.Value))
+			var varType string
+
+			switch item.Type{
+			case "string":
+				varType = "string"
+			case "list":
+				varType = "list"
+			default:
+				varType = "string"
+			}
+
+			return []byte(fmt.Sprintf("+%s\r\n", varType))
 		}
 
 		return []byte("+none\r\n")
