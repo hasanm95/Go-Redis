@@ -132,3 +132,73 @@ func handleLRange(cmds []string) []byte {
 
 	return encodeArray(result[startIdx : endIdx+1])
 }
+
+func replicaLPush(cmds []string) {
+	if len(cmds) < 3 {
+		return
+	}
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
+	values := cmds[2:]
+	slices.Reverse(values)
+	result := values
+	if item, exists := redisMap[cmds[1]]; exists {
+		result = append(result, item.ListValue...)
+	}
+	redisMap[cmds[1]] = CacheItem{ListValue: result, Type: "list"}
+}
+
+func replicaRPush(cmds []string) {
+	if len(cmds) < 3 {
+		return
+	}
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
+	result := make([]string, 0)
+	if item, exists := redisMap[cmds[1]]; exists {
+		result = append(result, item.ListValue...)
+	}
+	result = append(result, cmds[2:]...)
+	redisMap[cmds[1]] = CacheItem{ListValue: result, Type: "list"}
+}
+
+func replicaLPop(cmds []string) {
+	if len(cmds) < 2 {
+		return
+	}
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
+	item, exists := redisMap[cmds[1]]
+	if !exists || len(item.ListValue) < 1 {
+		return
+	}
+	remaining := item.ListValue[1:]
+	if len(remaining) < 1 {
+		delete(redisMap, cmds[1])
+	} else {
+		redisMap[cmds[1]] = CacheItem{ListValue: remaining, Type: "list"}
+	}
+}
+
+func replicaRPop(cmds []string) {
+	if len(cmds) < 2 {
+		return
+	}
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
+	item, exists := redisMap[cmds[1]]
+	if !exists || len(item.ListValue) < 1 {
+		return
+	}
+	lastIndex := len(item.ListValue) - 1
+	remaining := item.ListValue[:lastIndex]
+	if len(remaining) < 1 {
+		delete(redisMap, cmds[1])
+	} else {
+		redisMap[cmds[1]] = CacheItem{ListValue: remaining, Type: "list"}
+	}
+}

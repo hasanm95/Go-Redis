@@ -1,6 +1,17 @@
 package store
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/hasanm95/go-redis/internal/parser"
+)
+
+var writeCommands = map[string]bool{
+	"SET": true, "DEL": true, "MSET": true,
+	"INCR": true, "DECR": true, "INCRBY": true, "DECRBY": true,
+	"EXPIRE": true, "PERSIST": true, "RENAME": true,
+	"LPUSH": true, "RPUSH": true, "LPOP": true, "RPOP": true,
+}
 
 func HandleCommands(cmds []string) []byte {
 	if len(cmds) == 0 {
@@ -8,62 +19,78 @@ func HandleCommands(cmds []string) []byte {
 	}
 	command := cmds[0]
 
-	writeCommands := map[string]bool{
-		"SET": true, "DEL": true, "MSET": true,
-		"INCR": true, "DECR": true, "INCRBY": true, "DECRBY": true,
-	}
-
 	if isReplica && writeCommands[command] {
 		return []byte("-ERR this server is read-only\r\n")
 	}
 
+	var returnVal []byte
+
 	switch command {
 	case "COMMAND":
-		return []byte("*0\r\n")
+		returnVal = []byte("*0\r\n")
 	case "PING":
-		return []byte("+PONG\r\n")
+		returnVal = []byte("+PONG\r\n")
 	case "SET":
-		return handleSet(cmds)
+		returnVal = handleSet(cmds)
 	case "GET":
-		return handleGet(cmds)
+		returnVal = handleGet(cmds)
 	case "DEL", "DELETE":
-		return handleDel(cmds)
+		returnVal = handleDel(cmds)
 	case "EXISTS":
-		return handleExists(cmds)
+		returnVal = handleExists(cmds)
 	case "INCR":
-		return handleIncr(cmds)
+		returnVal = handleIncr(cmds)
 	case "DECR":
-		return handleDecr(cmds)
+		returnVal = handleDecr(cmds)
 	case "INCRBY":
-		return handleIncrBy(cmds)
+		returnVal = handleIncrBy(cmds)
 	case "DECRBY":
-		return handleDecrBy(cmds)
+		returnVal = handleDecrBy(cmds)
 	case "TTL":
-		return handleTTL(cmds)
+		returnVal = handleTTL(cmds)
 	case "MSET":
-		return handleMSet(cmds)
+		returnVal = handleMSet(cmds)
 	case "MGET":
-		return handleMGet(cmds)
+		returnVal = handleMGet(cmds)
 	case "EXPIRE":
-		return handleExpire(cmds)
+		returnVal = handleExpire(cmds)
 	case "PERSIST":
-		return handlePersist(cmds)
+		returnVal = handlePersist(cmds)
 	case "RENAME":
-		return handleRename(cmds)
+		returnVal = handleRename(cmds)
 	case "TYPE":
-		return handleType(cmds)
+		returnVal = handleType(cmds)
 	case "LPUSH":
-		return handleLPush(cmds)
+		returnVal = handleLPush(cmds)
 	case "RPUSH":
-		return handleRPush(cmds)
+		returnVal = handleRPush(cmds)
 	case "LPOP":
-		return handleLPop(cmds)
+		returnVal = handleLPop(cmds)
 	case "RPOP":
-		return handleRPop(cmds)
+		returnVal = handleRPop(cmds)
 	case "LRANGE":
-		return handleLRange(cmds)
+		returnVal = handleLRange(cmds)
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
+	}
+
+	// Propagate to replicas only for successful writes.
+	// A failed write starts with '-' (RESP error) — don't propagate those.
+	if writeCommands[command] && len(returnVal) > 0 && returnVal[0] != '-' {
+		propagate(cmds)
+	}
+
+	return returnVal
+}
+
+func propagate(cmds []string) {
+	replicas := GetReplicas()
+	if len(replicas) == 0 {
+		return
+	}
+	encoded := parser.EncodeCommand(cmds)
+	for _, replica := range replicas {
+		replica.Write(encoded)
 	}
 }
 
@@ -84,5 +111,15 @@ func ReplicaExecute(cmds []string) {
 		replicaExpire(cmds)
 	case "PERSIST":
 		replicaPersist(cmds)
+	case "RENAME":
+		replicaRename(cmds)
+	case "LPUSH":
+		replicaLPush(cmds)
+	case "RPUSH":
+		replicaRPush(cmds)
+	case "LPOP":
+		replicaLPop(cmds)
+	case "RPOP":
+		replicaRPop(cmds)
 	}
 }

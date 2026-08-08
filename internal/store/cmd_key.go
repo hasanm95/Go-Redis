@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-
-	"github.com/hasanm95/go-redis/internal/parser"
 )
 
 func handleDel(cmds []string) []byte {
@@ -22,12 +20,6 @@ func handleDel(cmds []string) []byte {
 		}
 	}
 	mapMutex.Unlock()
-
-	replicas := GetReplicas()
-	encoded := parser.EncodeCommand(cmds)
-	for _, replica := range replicas {
-		replica.Write(encoded)
-	}
 
 	return []byte(fmt.Sprintf(":%d\r\n", count))
 }
@@ -184,4 +176,19 @@ func replicaPersist(cmds []string) {
 	}
 	item.ExpiresAt = time.Time{}
 	redisMap[cmds[1]] = item
+}
+
+func replicaRename(cmds []string) {
+	if len(cmds) < 3 {
+		return
+	}
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
+	item, exists := redisMap[cmds[1]]
+	if !exists {
+		return
+	}
+	redisMap[cmds[2]] = item
+	delete(redisMap, cmds[1])
 }
