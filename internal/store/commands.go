@@ -75,6 +75,8 @@ func HandleCommands(cmds []string, conn net.Conn) []byte {
 		returnVal = handleSubscription(cmds, conn)
 	case "PUBLISH":
 		returnVal = handlePublish(cmds)
+	case "UNSUBSCRIBE":
+		returnVal = handleUnsubscription(cmds, conn)
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}

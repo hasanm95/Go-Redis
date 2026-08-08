@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net"
 	"slices"
 	"sync"
@@ -63,7 +62,6 @@ func handlePublish(cmds []string) []byte {
 }
 
 func RemoveSubscriber(conn net.Conn) {
-	log.Print("RemoveSubscriber called")
 	channelsMutex.Lock()
 	connChannelsMutex.Lock()
 	defer channelsMutex.Unlock()
@@ -89,4 +87,49 @@ func RemoveSubscriber(conn net.Conn) {
 	}
 
 	delete(connChannels, conn)
+}
+
+func handleUnsubscription(cmds []string, conn net.Conn) []byte {
+	channelsMutex.Lock()
+	connChannelsMutex.Lock()
+	defer channelsMutex.Unlock()
+	defer connChannelsMutex.Unlock()
+
+	var keys []string
+	if len(cmds) < 2 {
+		keys = append(keys, connChannels[conn]...)
+	} else {
+		keys = cmds[1:]
+	}
+
+	var buf bytes.Buffer
+
+	if len(keys) == 0 {
+		// Not subscribed to anything — Redis still sends one reply, with a nil channel.
+		buf.WriteString("*3\r\n$11\r\nunsubscribe\r\n$-1\r\n:0\r\n")
+		return buf.Bytes()
+	}
+
+	for _, key := range keys {
+		filtered := slices.DeleteFunc(channels[key], func(c net.Conn) bool {
+			return c == conn
+		})
+		if len(filtered) == 0 {
+			delete(channels, key)
+		} else {
+			channels[key] = filtered
+		}
+
+		connChannels[conn] = slices.DeleteFunc(connChannels[conn], func(ch string) bool {
+			return ch == key
+		})
+
+		buf.WriteString(fmt.Sprintf("*3\r\n$11\r\nunsubscribe\r\n$%d\r\n%s\r\n:%d\r\n", len(key), key, len(connChannels[conn])))
+	}
+
+	if len(connChannels[conn]) == 0 {
+		delete(connChannels, conn)
+	}
+
+	return buf.Bytes()
 }
