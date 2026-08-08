@@ -1,18 +1,50 @@
 {
     "age": {
         "Value": "30",
-        "ExpiresAt": "0001-01-01T00:00:00Z"
+        "ListValue": null,
+        "ExpiresAt": "0001-01-01T00:00:00Z",
+        "Type": ""
+    },
+    "certs": {
+        "Value": "",
+        "ListValue": [
+            "jsc",
+            "ssc",
+            "hsc",
+            "bsc",
+            "msc"
+        ],
+        "ExpiresAt": "0001-01-01T00:00:00Z",
+        "Type": "list"
     },
     "city": {
         "Value": "feni",
-        "ExpiresAt": "0001-01-01T00:00:00Z"
+        "ListValue": null,
+        "ExpiresAt": "0001-01-01T00:00:00Z",
+        "Type": ""
+    },
+    "citylist": {
+        "Value": "",
+        "ListValue": [
+            "dhaka",
+            "chattogram",
+            "feni",
+            "sylhet",
+            "khulna"
+        ],
+        "ExpiresAt": "0001-01-01T00:00:00Z",
+        "Type": ""
     },
     "country": {
         "Value": "bangladesh",
-        "ExpiresAt": "0001-01-01T00:00:00Z"
+        "ListValue": null,
+        "ExpiresAt": "0001-01-01T00:00:00Z",
+        "Type": ""
     },
     "user": {
         "Value": "hasan",
-        "ExpiresAt": "0001-01-01T00:00:00Z"
+        "ListValue": null,
+        "ExpiresAt": "0001-01-01T00:00:00Z",
+        "Type": ""
     }
 }

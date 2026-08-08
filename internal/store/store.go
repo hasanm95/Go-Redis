@@ -14,7 +14,9 @@ import (
 
 type CacheItem struct {
 	Value string
+	ListValue []string
 	ExpiresAt time.Time
+	Type string
 }
 
 var (

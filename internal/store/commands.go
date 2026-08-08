@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -128,12 +129,6 @@ func HandleCommands(cmds []string) []byte{
 			return []byte("-ERR value is not an integer or out of range\r\n")
 		}
 
-		replicas := GetReplicas()
-		encoded := parser.EncodeCommand(cmds)
-		for _, replica := range replicas {
-			replica.Write(encoded)
-		}
-
 		return []byte(fmt.Sprintf(":%d\r\n", result))
 
 	case "DECR": 
@@ -144,12 +139,6 @@ func HandleCommands(cmds []string) []byte{
 		result, err := IncrementBy(key, -1)
 		if err != nil {
 			return []byte("-ERR value is not an integer or out of range\r\n")
-		}
-
-		replicas := GetReplicas()
-		encoded := parser.EncodeCommand(cmds)
-		for _, replica := range replicas {
-			replica.Write(encoded)
 		}
 
 		return []byte(fmt.Sprintf(":%d\r\n", result))
@@ -168,12 +157,6 @@ func HandleCommands(cmds []string) []byte{
 			return []byte("-ERR value is not an integer or out of range\r\n")
 		}
 
-		replicas := GetReplicas()
-		encoded := parser.EncodeCommand(cmds)
-		for _, replica := range replicas {
-			replica.Write(encoded)
-		}
-
 		return []byte(fmt.Sprintf(":%d\r\n", result))
 	case "DECRBY": 
 		if len(cmds) != 3 {
@@ -187,12 +170,6 @@ func HandleCommands(cmds []string) []byte{
 		result, err := IncrementBy(key, -amount)
 		if err != nil {
 			return []byte("-ERR value is not an integer or out of range\r\n")
-		}
-
-		replicas := GetReplicas()
-		encoded := parser.EncodeCommand(cmds)
-		for _, replica := range replicas {
-			replica.Write(encoded)
 		}
 
 		return []byte(fmt.Sprintf(":%d\r\n", result))
@@ -242,12 +219,6 @@ func HandleCommands(cmds []string) []byte{
 			}
 		}
 		mapMutex.Unlock()
-
-		replicas := GetReplicas()
-		encoded := parser.EncodeCommand(cmds)
-		for _, replica := range replicas {
-			replica.Write(encoded)
-		}
 
 		return []byte("+OK\r\n")
 		
@@ -370,6 +341,34 @@ func HandleCommands(cmds []string) []byte{
 		}
 
 		return []byte("+none\r\n")
+
+	case "LPUSH":
+		if len(cmds) < 3 {
+			return []byte("-ERR wrong number of arguments for 'LPUSH' command\r\n")
+		}
+		mapMutex.Lock()
+		defer mapMutex.Unlock()
+
+		key := cmds[1];
+		values := cmds[2:]
+		slices.Reverse(values)
+		result := values
+
+		if item, exists := redisMap[key]; !exists {
+			redisMap[key] = CacheItem{
+				ListValue: result, 
+				Type:      "list",
+			}
+		} else {
+			result = append(result, item.ListValue...)
+		}
+
+		redisMap[key] = CacheItem{
+			ListValue: result,
+			Type: "list",
+		}
+
+		return []byte(fmt.Sprintf("+%d\r\n", len(result)))
 
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
