@@ -140,8 +140,11 @@ func replicaDel(cmds []string) {
 		return
 	}
 	mapMutex.Lock()
-	delete(redisMap, cmds[1])
-	mapMutex.Unlock()
+	defer mapMutex.Unlock()
+
+	for i := 1; i < len(cmds); i++ {
+		delete(redisMap, cmds[i])
+	}
 }
 
 func replicaExpire(cmds []string) {

@@ -13,7 +13,7 @@ func handleLPush(cmds []string) []byte {
 	mapMutex.Lock()
 	defer mapMutex.Unlock()
 
-	values := cmds[2:]
+	values := slices.Clone(cmds[2:])
 	slices.Reverse(values)
 	result := values
 
