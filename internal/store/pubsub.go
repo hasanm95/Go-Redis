@@ -31,9 +31,12 @@ func handleSubscription (cmds []string, conn net.Conn) []byte  {
 	for _, val := range incomingChannels {
 		if !slices.Contains(channels[val], conn) {
 			channels[val] = append(channels[val], conn)
-			connChannels[conn] = append(connChannels[conn], val)
-			buf.WriteString(fmt.Sprintf("*3\r\n$9\r\nsubscribe\r\n$%d\r\n%s\r\n:%d\r\n", len(val), val, len(connChannels[conn])))
 		}
+		if !slices.Contains(connChannels[conn], val) {
+			connChannels[conn] = append(connChannels[conn], val)
+		}
+
+		buf.WriteString(fmt.Sprintf("*3\r\n$9\r\nsubscribe\r\n$%d\r\n%s\r\n:%d\r\n", len(val), val, len(connChannels[conn])))
 	}
 	
 	return buf.Bytes()
