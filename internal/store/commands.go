@@ -355,6 +355,22 @@ func HandleCommands(cmds []string) []byte{
 		delete(redisMap, oldKey)
 
 		return []byte("+OK\r\n")
+
+	case "TYPE":
+		if len(cmds) < 2 {
+			return []byte("-ERR wrong number of arguments for 'TYPE' command\r\n")
+		}
+
+		mapMutex.RLock()
+		defer mapMutex.RUnlock()
+		key := cmds[1]
+
+		if item, exists := redisMap[key]; exists {
+			return []byte(fmt.Sprintf("+%T\r\n", item.Value))
+		}
+
+		return []byte("+none\r\n")
+
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
