@@ -20,12 +20,12 @@ func HandleCommands(cmds []string, conn net.Conn) []byte {
 	}
 	command := cmds[0]
 
-	if isReplica && writeCommands[command] {
-		return []byte("-ERR this server is read-only\r\n")
-	}
-
 	if enqueueIfInTransaction(command, cmds, conn) {
 		return []byte("+QUEUED\r\n")
+	}
+
+	if isReplica && writeCommands[command] {
+		return []byte("-ERR this server is read-only\r\n")
 	}
 
 	var returnVal []byte

@@ -91,3 +91,9 @@ func handleExec(conn net.Conn) []byte {
 
 	return buf.Bytes()
 }
+
+func RemoveTransaction(conn net.Conn) {
+	transactionsMutex.Lock()
+	defer transactionsMutex.Unlock()
+	delete(transactions, conn)
+}

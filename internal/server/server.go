@@ -47,6 +47,7 @@ func handleConnection(conn net.Conn) {
 
 		if err != nil {
 			store.RemoveSubscriber(conn)
+    		store.RemoveTransaction(conn)
 			log.Printf("err: %v", err)
 			return;
 		}
