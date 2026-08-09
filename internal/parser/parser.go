@@ -13,7 +13,7 @@ func getArrayLength(reader *bufio.Reader)(int, error) {
 	prefix, err := reader.ReadByte()
 
 	if err != nil {
-		return 0, fmt.Errorf("[length] Error reading first byte: %v", err)
+		return 0, fmt.Errorf("[length] Error reading first byte: %w", err)
 	}
 
 	if prefix != '*' {

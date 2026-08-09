@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -28,10 +29,13 @@ func main(){
     switch cfg.Mode{
     case "master": 
         fmt.Printf("Starting as Master on port %s\n", cfg.Port)
-        store.LoadFromDisk()
 
         if err := store.LoadAOF("aof.log"); err != nil {
-            log.Fatal("failed to load AOF: ", err)
+            if errors.Is(err, os.ErrNotExist){
+                store.LoadFromDisk()
+            } else {
+                log.Fatal("failed to load AOF: ", err)
+            }
         }
 
         if err := store.InitAOF("aof.log"); err != nil {

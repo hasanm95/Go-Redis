@@ -1,53 +1,8 @@
 {
-    "aoflist": {
-        "Value": "",
-        "ListValue": [
-            "three",
-            "two",
-            "one"
-        ],
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": "list"
-    },
-    "aoftest": {
-        "Value": "survived",
+    "road": {
+        "Value": "m-12",
         "ListValue": null,
         "ExpiresAt": "0001-01-01T00:00:00Z",
         "Type": ""
-    },
-    "counter": {
-        "Value": "15",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
-    },
-    "fullname": {
-        "Value": "Hasan",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
-    },
-    "k1": {
-        "Value": "v1",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
-    },
-    "k2": {
-        "Value": "v2",
-        "ListValue": null,
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": ""
-    },
-    "mylist": {
-        "Value": "",
-        "ListValue": [
-            "b",
-            "a",
-            "x",
-            "y"
-        ],
-        "ExpiresAt": "0001-01-01T00:00:00Z",
-        "Type": "list"
     }
 }

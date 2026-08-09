@@ -2,6 +2,9 @@ package store
 
 import (
 	"bufio"
+	"errors"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"sync"
@@ -45,7 +48,7 @@ func appendToAOF(cmds []string) {
 func LoadAOF(path string) error {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return nil
+		return os.ErrNotExist
 	}
 	if err != nil {
 		return err
@@ -57,9 +60,14 @@ func LoadAOF(path string) error {
 
 	for {
 		cmds, err := parser.RedisParser(reader)
+
 		if err != nil {
-			break
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("AOF corrupted: %w", err)
 		}
+		
 		ReplicaExecute(cmds)
 		count++
 	}
