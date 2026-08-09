@@ -14,7 +14,7 @@ type txState struct {
 
 var (
     transactions      = make(map[net.Conn]*txState)
-    transactionsMutex sync.RWMutex
+    transactionsMutex sync.Mutex
 )
 
 func handleMulti(cmds []string, conn net.Conn) []byte {
@@ -68,7 +68,7 @@ func handleExec(conn net.Conn) []byte {
 	txState, exists := transactions[conn]
 	if !exists {
 		transactionsMutex.Unlock()
-		return []byte("-ERR DISCARD without MULTI\r\n")
+		return []byte("-ERR EXEC without MULTI\r\n")
 	}
 
 	queuedItems := txState.queued
