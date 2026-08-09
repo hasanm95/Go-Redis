@@ -24,6 +24,10 @@ func HandleCommands(cmds []string, conn net.Conn) []byte {
 		return []byte("-ERR this server is read-only\r\n")
 	}
 
+	if enqueueIfInTransaction(command, cmds, conn) {
+		return []byte("+QUEUED\r\n")
+	}
+
 	var returnVal []byte
 
 	switch command {
@@ -77,6 +81,12 @@ func HandleCommands(cmds []string, conn net.Conn) []byte {
 		returnVal = handlePublish(cmds)
 	case "UNSUBSCRIBE":
 		returnVal = handleUnsubscription(cmds, conn)
+	case "MULTI":
+		returnVal = handleMulti(cmds, conn)
+	case "DISCARD":
+		returnVal = handleDiscard(conn)
+	case "EXEC":
+		returnVal = handleExec(conn)
 	default:
 		return []byte(fmt.Sprintf("-ERR unknown command '%s'\r\n", cmds[0]))
 	}
